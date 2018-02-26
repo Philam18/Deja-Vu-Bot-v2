@@ -1,0 +1,19 @@
+{
+  "name": "deja-vu-bot",
+  "version": "1.0.0",
+  "description": "successor of deja vu player",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "philip l",
+  "license": "ISC",
+  "dependencies": {
+    "discord.js": "^11.3.0",
+    "dotenv": "^5.0.0",
+    "ffmpeg": "0.0.4",
+    "ffmpeg-binaries": "^3.2.2-3",
+    "node-opus": "^0.2.7",
+    "ytdl-core": "^0.20.1"
+  }
+}

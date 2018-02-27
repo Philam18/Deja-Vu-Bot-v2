@@ -1,0 +1,6 @@
+# You will want these ignore's so you keep your private keys safe
+# Failure to keep your Discord bot-tokens safe will result in the disabling of your application client
+
+.env
+node_modules
+README.md

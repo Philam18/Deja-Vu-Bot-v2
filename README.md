@@ -38,25 +38,25 @@ Your bot will need to be added to the guild (aka. server). To do this you must f
 (https://discordapp.com/developers/docs/intro), and under **Applications** on the upper-left, click **My Apps**,
 then click **New App** to add an application.  
 
-> ![alt text](https://i.imgur.com/VoqdQKf.png "Creation screen")  
-> Feel free to name the new bot whatever you like**- this will be the name that appears in your server.
+![alt text](https://i.imgur.com/VoqdQKf.png "Creation screen")  
+#### Feel free to name the new bot whatever you like- this will be the name that appears in your server.
 
-> ![alt text](https://i.imgur.com/uxLIV2Z.png "Client ID is necessary for later")  
-> Keep note of your Client ID for later  
+![alt text](https://i.imgur.com/uxLIV2Z.png "Client ID is necessary for later")  
+#### Keep note of your Client ID for later  
 
 Scroll down to the section **Bot** to convert the application to a Bot-user; this will produce a prompt-  
 click **Yes, do it!**. After the bot user is created, click and **reveal the token**.
 
 > ![alt text](https://i.imgur.com/t12MwPr.png "And the bot was born!")  
-> **NOTE**: bot tokens are secret- they should never be publicly disclosed!  
+> **NOTE**: bot tokens are secret- they should never be publicly disclosed.  
+> This can disable your bot-applciation and so far as harm your server!
 
 #### Keep note of your bot token for later  
 You will need this bot token to authenticate your bot-client
 
 ### Adding the bot to the server
-(_Note: you should still be logged in for this step_)
-Head to the [Discord Permissions calculator](https://discordapi.com/permissions.html).
-The bot requires the following permissions:
+(_Note: you should still be logged in for this step_)  
+Head to the [Discord Permissions calculator](https://discordapi.com/permissions.html). The bot requires the following permissions:
 - Read messages
 - Read message history 
 - Send messages
@@ -69,17 +69,14 @@ Check off these permissions, and enter your **Client ID** into the field. Then c
 Alternatively, you can copy this link into your browser and place your Client ID inside:  
 _https://discordapp.com/oauth2/authorize?client_id=INSERT_CLIENT_ID_HERE&scope=bot&permissions=36776960_
 
-> You can add the bot to any server you would like
-> ![alt text](https://i.imgur.com/t12MwPr.png "And the bot was born!")
+#### You can add the bot to any server you would like  
+![alt text](https://i.imgur.com/t12MwPr.png "And the bot was born!")
 
 ### Setting environment variables
 Inside your cloned repository, create a file `.env` and add the line of text  
 ```
 BOT_TOKEN=<PLACE YOUR BOT TOKEN HERE>
 ```
-### Adding the bot to the server
-
-
 
 
 

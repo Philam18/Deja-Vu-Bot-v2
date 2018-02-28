@@ -64,7 +64,7 @@ Head to the [Discord Permissions calculator](https://discordapi.com/permissions.
 - View Channel
 - Connect
 - Speak
-- Use Voice Activity (optional)
+- Use Voice Activity (optional)  
 Check off these permissions, and enter your **Client ID** into the field. Then click the **Link**.
 Alternatively, you can copy this link into your browser and place your Client ID inside:  
 _https://discordapp.com/oauth2/authorize?client_id=INSERT_CLIENT_ID_HERE&scope=bot&permissions=36776960_

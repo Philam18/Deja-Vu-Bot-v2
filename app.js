@@ -3,7 +3,7 @@ require('dotenv').config();
 const Discord = require('discord.js');
 const client = new Discord.Client();
 const MusicPlayer = require('./MusicPlayer');
-const musicPlayer = new MusicPlayer(this.client);
+const musicPlayer = new MusicPlayer();
 const BOT_TOKEN = process.env.BOT_TOKEN;
 //HEX COLORS
 const RED = 0xd10000;
@@ -56,7 +56,8 @@ client.on('message',(message)=>{
   if(
     message.content === '!stop' ||          //Command is !stop
     REGEX_PLAY.exec(message.content) ||     //Command is !play <url>
-    message.content === '!queue'            //Command is !queue
+    message.content === '!queue' ||         //Command is !queue
+    message.content === '!skip'             //Command is !skip
   ){
     // -------- PRINT OUT MESSAGE ---------
     musicPlayer.command(message);

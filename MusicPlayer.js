@@ -5,7 +5,8 @@ const RED = 0xd10000;
 const GREEN = 0x00c939;
 const YELLOW = 0xe5c300;
 // Stream reading options
-const YOUTUBE_OPTIONS = {quality: 'highestaudio',filter: 'audioonly'};
+//const YOUTUBE_OPTIONS = {quality: 'highestaudio',filter: 'audioonly'};
+const YOUTUBE_OPTIONS = {};
 const STREAM_OPTIONS = {seek : 0, volume : 0.3, bitrate: 'auto'};
 // Regular Expressions
 const REGEX_DIGIT = /^\d{1,2}$/;
@@ -14,8 +15,7 @@ const REGEX_PLAY = /^(\!play )/i;
 
 
 class MusicPlayer{
-  constructor(client){
-    this.client = client;
+  constructor(){
     this.connection = null;
     this.nowPlaying = {};
     this.textChannel = {};
@@ -63,7 +63,6 @@ class MusicPlayer{
         //The selected index must be within range
         if(musicQueue.length > 0 && url <= musicQueue.length && url > 0){
           var fetchedSong = musicQueue.splice(url-1, 1)[0];
-          this.guildMusicQueue.set(this.textChannel.guild.id, musicQueue);
           this.connection.dispatcher.end(null);
           this.play(fetchedSong.url, response, (responseBack)=>{
             this.textChannel.send(responseBack).then(()=>{
@@ -74,9 +73,9 @@ class MusicPlayer{
           response.setColor(RED);
           response.setTitle(`Invalid position ${url}`);
           if(musicQueue.length == 1){
-            response.setDescription(`There is only 1 item in the queue at position 1`);
+            response.setDescription(`There is only 1 item in the queue at position **1**`);
           }else if(musicQueue.length > 1){
-            response.setDescription(`Pick a position from 1 - ${musicQueue.length}`);
+            response.setDescription(`Pick a position from **1** to **${musicQueue.length}**`);
           }else{
             response.setDescription(`There are no items in the queue`);
           }
@@ -114,6 +113,27 @@ class MusicPlayer{
       this.textChannel.send(response).then(()=>{
         message.delete();
       });
+    }
+    //-----------------------------------------------------------------------
+    if(message.content === '!skip'){
+      var musicQueue = this.guildMusicQueue.get(this.textChannel.guild.id);
+      if(musicQueue.length > 0){
+        var nextSong = musicQueue.shift();
+        this.connection.dispatcher.end(null);
+        this.play(nextSong.url,response,(responseBack)=>{
+          this.textChannel.send(responseBack).then(()=>{
+            message.delete();
+          });
+        });
+      }else{
+        this.connection.dispatcher.end(null);
+        response.setColor(GREEN);
+        response.setTitle("Done playing.");
+        response.setDescription("Queue empty");
+        this.textChannel.send(response).then(()=>{
+          message.delete();
+        });
+      }
     }
     //-------------------   END   ----------------------
   }
@@ -196,20 +216,23 @@ class MusicPlayer{
           //    from a different server
           //    - the forceplay event is emitted through manual override
           if(reason != null){
-            console.log('[MusicPlayer.Dispatcher] Attempting to play next song...');
             var nextSong = musicQueue.shift();
             if(nextSong){
+              console.log('[MusicPlayer.Dispatcher] Attempting to play next song...');
               //If the queue still has music, play it
               this.play(nextSong.url, new Discord.RichEmbed(), (res)=>{
                 this.textChannel.send(res);
               });
             }else{
+              console.log('[MusicPlayer.Dispatcher] Done queue- disconnecting voice');
               //Otherwise stop the bot
               this.disconnectVoiceChannel();
-              var msg = new Discord.RichEmbed().
-              setColor(GREEN)
+              var bot = this.textChannel.client.user;
+              var msg = new Discord.RichEmbed()
+              .setColor(GREEN)
               .setTitle("Done playing.")
-              .setDescription("Queue empty");
+              .setDescription("Queue empty")
+              .setFooter(bot.username, bot.avatarURL);
               this.textChannel.send(msg);
               console.log('[MusicPlayer] Disconnecting channel: finished queue');
             }

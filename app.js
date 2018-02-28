@@ -3,7 +3,7 @@ require('dotenv').config();
 const Discord = require('discord.js');
 const client = new Discord.Client();
 const MusicPlayer = require('./MusicPlayer');
-const musicPlayer = new MusicPlayer(client);
+const musicPlayer = new MusicPlayer(this.client);
 const BOT_TOKEN = process.env.BOT_TOKEN;
 //HEX COLORS
 const RED = 0xd10000;
@@ -50,7 +50,8 @@ client.on('message',(message)=>{
   console.log(`   Text: ${message.content}`);
   if(
     message.content === '!stop' ||
-    /^(\!play )/i.exec(message.content)
+    /^(\!play )/i.exec(message.content) ||
+    message.content === '!queue'
   ){
     // -------- PRINT OUT MESSAGE ---------
     musicPlayer.command(message);
@@ -66,7 +67,6 @@ client.on('message',(message)=>{
     var missingPermissions = botUser.missingPermissions(REQUIRED_PERMISSIONS);
     if(missingPermissions.length > 0){
       console.log(`[CLIENT] Can't clear chat- missing permissions: ${missingPermissions}`);
-      console.log('-------------------------------------------------------------------------');
       response.setColor(RED);
       response.setTitle(`${client.user.username} is missing permissions!`);
       var text = "Go to https://discordapi.com/permissions.html to grant permissions.\n";
@@ -78,6 +78,7 @@ client.on('message',(message)=>{
       return;
     }
     clearMessages(channel,response,(res)=>{
+      // channel.send(res);
       channel.send(res);
     });
   }
@@ -143,37 +144,47 @@ client.on('message',(message)=>{
     musicPlayer.connection.dispatcher.end();
   }
 
-
+  /**
+  NOTE: as of Jan 12 2017, the  discord API has been limited to a maximum deletion
+  history range of TWO WEEKS (See: https://github.com/discordapp/discord-api-docs/issues/208)
+  **/
   function clearMessages(channel,response,callback){
     channel.fetchMessages({limit:100})
-    .catch(error=>{
-      console.log('[CLIENT] Error1 while cleaning: ' + error.message);
-      console.log('-------------------------------------------------------------------------');
-      response.setColor(RED);
-      response.setDescription(error.message);
-      callback(response);
-      return;
-    })
     .then(messages => {
+      //Base case: If no more messages to delete, return with callback
       if(messages.size === 0){
         console.log('[CLIENT] Cleared chat!');
         console.log('-------------------------------------------------------------------------');
         response.setColor(GREEN);
-        response.setDescription(`Cleaned up chat in **${channel.name}**`);
+        response.setTitle(`Cleaned up chat fully in **${channel.name}**`);
+        response.setDescription('**Note**: can only delete messages younger than two weeks');
         callback(response);
         return;
       }
-      channel.bulkDelete(messages,{filterOld:false}).catch(error=>{
-        console.log('[CLIENT] Error2 while cleaning: ' + error.message);
+      try{
+        //Recursive case: If there are still more messages, delete them
+        channel.bulkDelete(messages,{filterOld:false}).then(()=>{
+          clearMessages(channel, response,callback);
+        });
+      }catch(error){
+        console.log('[CLIENT] Cant clean anymore');
         console.log('-------------------------------------------------------------------------');
-        response.setColor(RED);
-        response.setDescription(error.message);
+        response.setColor(GREEN);
+        response.setTitle(`Cleaned up chat in **${channel.name}**`);
+        response.setDescription('**Note**: can only delete messages younger than two weeks');
         callback(response);
         return;
-      })
-      .then(()=>{
-        clearMessages(channel, response,callback);
-      });
+      }
+
+    })
+    .catch(error=>{
+      console.log('[CLIENT] Error1 Fetching messages: ' + error.message);
+      console.log('-------------------------------------------------------------------------');
+      response.setColor(RED);
+      response.setTitle('Error while fetching messages');
+      response.setDescription(error.message);
+      callback(response);
+      return;
     });
   }
 });

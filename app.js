@@ -89,7 +89,7 @@ client.on('message',(message)=>{
     });
   }
   //Kills the bot: kills connection and destroys client
-  if(message.content === "!kill"){
+  if(message.content === '!kill'){
     var response = new Discord.RichEmbed()
     .setTimestamp(message.createdAt)
     .setFooter(`${message.author.username}: ${message.content}`,message.author.avatarURL)
@@ -105,6 +105,23 @@ client.on('message',(message)=>{
     });
   }
 
+  if(message.content === '!help'){
+    var response = new Discord.RichEmbed()
+    .setTimestamp(message.createdAt)
+    .setFooter(`${message.author.username}: ${message.content}`,message.author.avatarURL)
+    .setColor(YELLOW)
+    .setTitle("Available commands:")
+    .addField('!play <URL>', 'Enter a YouTube link to stream audio')
+    .addField('!play <position>', 'Play a specific song in the queue')
+    .addField('!stop', 'Disconnects the bot from the voice channel and empties the music queue')
+    .addField('!queue', 'Displays the current music queue')
+    .addField('!skip', 'Skip the current song and play the next')
+    .addField('!clean', 'Delete messages up to two weeks old in a channel')
+    .addField('!kill', 'Disconnect the bot and kill the process');
+    message.channel.send(response).then(()=>{
+      message.delete();
+    });
+  }
   // -------- DEBUGGING --------
 
 
@@ -141,8 +158,8 @@ function clearMessages(channel,response,callback){
       console.log('[CLIENT] Cleared chat!');
       console.log('-------------------------------------------------------------------------');
       response.setColor(GREEN);
-      response.setTitle(`Cleaned up chat fully in **${channel.name}**`);
-      response.setDescription('**Note**: can only delete messages younger than two weeks');
+      response.setTitle(`Cleaned up all messages in **${channel.name}**`);
+      response.setDescription('**Note**: can only delete messages up to two weeks old');
       if(callback) callback(response);
       return;
     }
@@ -156,7 +173,7 @@ function clearMessages(channel,response,callback){
       console.log('-------------------------------------------------------------------------');
       response.setColor(GREEN);
       response.setTitle(`Cleaned up chat in **${channel.name}**`);
-      response.setDescription('**Note**: can only delete messages within two weeks');
+      response.setDescription('**Note**: can only delete messages up to two weeks old');
       if(callback) callback(response);
       return;
     }

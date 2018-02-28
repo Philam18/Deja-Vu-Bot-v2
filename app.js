@@ -9,6 +9,9 @@ const BOT_TOKEN = process.env.BOT_TOKEN;
 const RED = 0xd10000;
 const GREEN = 0x00c939;
 const YELLOW = 0xe5c300;
+//Regular Expressions
+const REGEX_PLAY = /^(\!play )/i;
+//BOT PERMISSIONS
 const REQUIRED_PERMISSIONS = [
   'VIEW_CHANNEL', 'SEND_MESSAGES', 'MANAGE_MESSAGES', 'EMBED_LINKS',
   'READ_MESSAGE_HISTORY', 'CONNECT', 'SPEAK', 'USE_VAD'
@@ -37,7 +40,7 @@ client.on('ready', ()=>{
 
 /**
 -----------------------------------------------------------------------
-MessageEvent listener
+MAIN Event listener (message events)
 -----------------------------------------------------------------------
 **/
 client.on('message',(message)=>{
@@ -48,16 +51,19 @@ client.on('message',(message)=>{
   console.log('[CLIENT] Message Received:');
   console.log(`   User: ${message.author.username}`);
   console.log(`   Text: ${message.content}`);
+
+  // Music player commands
   if(
-    message.content === '!stop' ||
-    /^(\!play )/i.exec(message.content) ||
-    message.content === '!queue'
+    message.content === '!stop' ||          //Command is !stop
+    REGEX_PLAY.exec(message.content) ||     //Command is !play <url>
+    message.content === '!queue'            //Command is !queue
   ){
     // -------- PRINT OUT MESSAGE ---------
     musicPlayer.command(message);
     return;
   }
-  //Clear/Wipe history
+
+  // Wipe Chat history (usually for cleaning up test servers)
   if(message.content === '!clear'){
     var channel = message.channel;
     var response = new Discord.RichEmbed()
@@ -78,117 +84,90 @@ client.on('message',(message)=>{
       return;
     }
     clearMessages(channel,response,(res)=>{
-      // channel.send(res);
       channel.send(res);
+    });
+  }
+  //Kills the bot: kills connection and destroys client
+  if(message.content === "!kill"){
+    var response = new Discord.RichEmbed()
+    .setTimestamp(message.createdAt)
+    .setFooter(`${message.author.username}: ${message.content}`,message.author.avatarURL)
+    .setColor(YELLOW)
+    .setTitle("Killed process")
+    .setDescription("Goodbye!");
+    message.channel.send(response).then(()=>{
+      message.delete().then(()=>{
+        client.destroy().then(()=>{
+          process.exit();
+        });
+      });
     });
   }
 
   // -------- DEBUGGING --------
-  if(message.content === '!test1'){
-    message.channel.send(`[Test] My voice channel is **${musicPlayer.getChannelName()}**`);
-    message.delete();
-  }
-  if(message.content === '!test2'){
-    message.channel.send(
-      {
-        embed: {
-          color: 0xf44242,
-          author: {
-            name: client.user.username,
-            icon_url: client.user.avatarURL
-          },
-          title: "This is an embed",
-          url: "http://google.com",
-          description: "Video: https://www.youtube.com/watch?v=OoI57NeMwCc",
-          fields: [{
-              name: "Fields",
-              value: "They can have different fields with small headlines."
-            },
-            {
-              name: "Masked links",
-              value: "You can put [masked links](http://google.com) inside of rich embeds."
-            },
-            {
-              name: "Markdown",
-              value: "You can put all the *usual* **__Markdown__** inside of them."
-            }
-          ],
-          timestamp: new Date(),
-          footer: {
-            icon_url: client.user.avatarURL,
-            text: "Type `!help` for a list of commands"
-          }
-        }
-      }
-    );
-  }
-  if(message.content === '!test3'){
-    message.channel.send({
-      embed: {
-        color: GREEN,
-        fields : []
-      }
-    });
-  }
-  if(message.content === '!test4'){
-    var obj = musicPlayer.connection;
-    if(obj){
-      console.log(musicPlayer.connection.dispatcher.stream);
-      console.log('-------------------------------------------------------------------------');
-      return;
-    }else{
-      console.log(null);
-    }
-  }
-  if(message.content === '!test5'){
-    musicPlayer.connection.dispatcher.end();
-  }
 
+
+});
+
+/**
+-----------------------------------------------------------------------
+SYSTEM EVENT listeners
+-----------------------------------------------------------------------
+**/
+client.on('warn', (message)=>{
+  console.log('[CLIENT] Warning: ' + message);
+});
+client.on('error', (error)=>{
+  console.log('[CLIENT] Error: ' + error.mesage);
+});
+client.on('reconnecting', ()=>{
+  console.log('[CLIENT] Reconnecting...');
+});
+/**
+-----------------------------------------------------------------------
+AUXILLIARY FUNCTIONS
+-----------------------------------------------------------------------
+**/
+function clearMessages(channel,response,callback){
   /**
   NOTE: as of Jan 12 2017, the  discord API has been limited to a maximum deletion
   history range of TWO WEEKS (See: https://github.com/discordapp/discord-api-docs/issues/208)
   **/
-  function clearMessages(channel,response,callback){
-    channel.fetchMessages({limit:100})
-    .then(messages => {
-      //Base case: If no more messages to delete, return with callback
-      if(messages.size === 0){
-        console.log('[CLIENT] Cleared chat!');
-        console.log('-------------------------------------------------------------------------');
-        response.setColor(GREEN);
-        response.setTitle(`Cleaned up chat fully in **${channel.name}**`);
-        response.setDescription('**Note**: can only delete messages younger than two weeks');
-        callback(response);
-        return;
-      }
-      try{
-        //Recursive case: If there are still more messages, delete them
-        channel.bulkDelete(messages,{filterOld:false}).then(()=>{
-          clearMessages(channel, response,callback);
-        });
-      }catch(error){
-        console.log('[CLIENT] Cant clean anymore');
-        console.log('-------------------------------------------------------------------------');
-        response.setColor(GREEN);
-        response.setTitle(`Cleaned up chat in **${channel.name}**`);
-        response.setDescription('**Note**: can only delete messages younger than two weeks');
-        callback(response);
-        return;
-      }
-
-    })
-    .catch(error=>{
-      console.log('[CLIENT] Error1 Fetching messages: ' + error.message);
+  channel.fetchMessages({limit:100})
+  .then(messages => {
+    //Base case: If no more messages to delete, return with callback
+    if(messages.size === 0){
+      console.log('[CLIENT] Cleared chat!');
       console.log('-------------------------------------------------------------------------');
-      response.setColor(RED);
-      response.setTitle('Error while fetching messages');
-      response.setDescription(error.message);
-      callback(response);
+      response.setColor(GREEN);
+      response.setTitle(`Cleaned up chat fully in **${channel.name}**`);
+      response.setDescription('**Note**: can only delete messages younger than two weeks');
+      if(callback) callback(response);
       return;
-    });
-  }
-});
+    }
+    try{
+      //Recursive case: If there are still more messages, delete them
+      channel.bulkDelete(messages,{filterOld:false}).then(()=>{
+        clearMessages(channel, response,callback);
+      });
+    }catch(error){
+      console.log('[CLIENT] Cant clean anymore');
+      console.log('-------------------------------------------------------------------------');
+      response.setColor(GREEN);
+      response.setTitle(`Cleaned up chat in **${channel.name}**`);
+      response.setDescription('**Note**: can only delete messages within two weeks');
+      if(callback) callback(response);
+      return;
+    }
 
-client.on('warn', (message)=>{
-  console.log('[CLIENT] Warning: ' + message);
-});
+  })
+  .catch(error=>{
+    console.log('[CLIENT] Error Fetching messages: ' + error.message);
+    console.log('-------------------------------------------------------------------------');
+    response.setColor(RED);
+    response.setTitle('Error while fetching messages');
+    response.setDescription(error.message);
+    if(callback) callback(response);
+    return;
+  });
+}

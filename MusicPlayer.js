@@ -7,6 +7,11 @@ const YELLOW = 0xe5c300;
 // Stream reading options
 const YOUTUBE_OPTIONS = {quality: 'highestaudio',filter: 'audioonly'};
 const STREAM_OPTIONS = {seek : 0, volume : 0.3, bitrate: 'auto'};
+// Regular Expressions
+const REGEX_DIGIT = /^\d{1,2}$/;
+const REGEX_PLAY = /^(\!play )/i;
+
+
 
 class MusicPlayer{
   constructor(client){
@@ -17,13 +22,14 @@ class MusicPlayer{
     this.guildMusicQueue = new Map();
   }
 
+  // Main handler of events (play, stop, print queue, etc)
   command(message){
     this.textChannel = message.channel;
     var voiceChannel = message.member.voiceChannel;
     //Embed response template
     var response = new Discord.RichEmbed()
     .setTimestamp(message.createdAt)
-    .setFooter(`${message.author.username}  ${message.content}`,message.author.avatarURL);
+    .setFooter(`${message.author.username}: ${message.content}`,message.author.avatarURL);
     //-----------------------------------------------------------------------
     if(message.content === '!stop'){
       if(this.connection != null && message.guild == this.connection.channel.guild){
@@ -32,46 +38,82 @@ class MusicPlayer{
         response.setColor(GREEN);
         response.setDescription(`Stopped`);
         this.disconnectVoiceChannel();
-        this.textChannel.send(response);
-        message.delete();
+        this.textChannel.send(response).then(()=>{
+          message.delete();
+        });
       }
       return;
     }
     //-----------------------------------------------------------------------
-    if(/^(\!play )/i.exec(message.content)){
+    if(REGEX_PLAY.exec(message.content)){
       if(voiceChannel == null){
         console.log(`[MusicPlayer] user not in voice channel: ${message.author.username}`);
         response.setColor(RED);
         response.setDescription(`**${message.author.username}** is not in a voice channel.`);
-        this.textChannel.send(response);
-        message.delete();
-        return;
-      }
-
-      var url = message.content.replace(/^(\!play )/i,'');
-      console.log(`[MusicPlayer] Connected to voice channel: ${voiceChannel.name}`);
-      this.connectToVoiceChannel(voiceChannel,()=>{
-        this.play(url,response,(responseBack)=>{
-          this.textChannel.send(responseBack);
+        this.textChannel.send(response).then(()=>{
           message.delete();
         });
-      });
+        return;
+      }
+      var url = message.content.replace(REGEX_PLAY,'');
+      //If user manually selects a song in queue, force play it
+      //Otherwise just play the song/add the song to queue
+      if(this.connection && REGEX_DIGIT.exec(url)){
+        var musicQueue = this.guildMusicQueue.get(this.textChannel.guild.id);
+        //The selected index must be within range
+        if(musicQueue.length > 0 && url <= musicQueue.length && url > 0){
+          var fetchedSong = musicQueue.splice(url-1, 1)[0];
+          this.guildMusicQueue.set(this.textChannel.guild.id, musicQueue);
+          this.connection.dispatcher.end(null);
+          this.play(fetchedSong.url, response, (responseBack)=>{
+            this.textChannel.send(responseBack).then(()=>{
+              message.delete();
+            })
+          });
+        }else{
+          response.setColor(RED);
+          response.setTitle(`Invalid position ${url}`);
+          if(musicQueue.length == 1){
+            response.setDescription(`There is only 1 item in the queue at position 1`);
+          }else if(musicQueue.length > 1){
+            response.setDescription(`Pick a position from 1 - ${musicQueue.length}`);
+          }else{
+            response.setDescription(`There are no items in the queue`);
+          }
+          this.textChannel.send(response).then(()=>{
+            message.delete();
+          });
+        }
+      }else{
+        this.connectToVoiceChannel(voiceChannel,()=>{
+          console.log(`[MusicPlayer] Connected to voice channel: ${voiceChannel.name}`);
+          this.play(url,response,(responseBack)=>{
+            this.textChannel.send(responseBack).then(()=>{
+              message.delete();
+            });
+          });
+        });
+      }
       return;
     }
 
     //-----------------------------------------------------------------------
     if(message.content === '!queue'){
       response.setColor(GREEN);
-      response.setTitle("Current queue");
+      var text = "```";
       var queue = this.guildMusicQueue.get(this.textChannel.guild.id);
       if (queue != null && queue.length > 0){
         for(let i = 0; i < queue.length; i++){
-          response.addField(`${i+1}`, `${queue[i].title} - ${queue[i].artist}`);
+          text += `${i+1}: ${queue[i].title} - ${queue[i].artist}\n`;
         }
       }else{
-        response.setDescription('Queue is empty');
+        text += 'Empty\n';
       }
-      this.textChannel.send(response);
+      text += "```";
+      response.addField('Queue', text);
+      this.textChannel.send(response).then(()=>{
+        message.delete();
+      });
     }
     //-------------------   END   ----------------------
   }
@@ -84,7 +126,7 @@ class MusicPlayer{
   }
 
   disconnectVoiceChannel(){
-    this.connection.channel.leave();
+    this.connection.disconnect();
     this.connection = null;
   }
 
@@ -140,15 +182,21 @@ class MusicPlayer{
       }
       **/
 
-      if(!this.connection.speaking){
+      if(this.connection && !this.connection.speaking){
         var dispatcher = this.connection.playStream(ytdl(url, YOUTUBE_OPTIONS),STREAM_OPTIONS);
+        this.nowPlaying = song;
+        console.log(`[MusicPlayer] Playing song: ${info.title}`);
+        ////////////////////////////////////////////////////////////////////////////////////////
+        //Dispatcher is the listener for "Song/Voice/Stream end events"
         dispatcher.on('end',(reason)=>{
           console.log('-------------------------------------------------------------------------');
           console.log(`[MusicPlayer.Dispatcher] Stopped: ${reason}`);
           // If the reason is not null, try to play the next song
-          // Only when the user gives a disconnect command the reason is null, even
-          // from a different server
-          if(reason != null || reason == 'user'){
+          //    - when the users give a !stop command the reason returns null, even
+          //    from a different server
+          //    - the forceplay event is emitted through manual override
+          if(reason != null){
+            console.log('[MusicPlayer.Dispatcher] Attempting to play next song...');
             var nextSong = musicQueue.shift();
             if(nextSong){
               //If the queue still has music, play it
@@ -168,20 +216,23 @@ class MusicPlayer{
           }
           return;
         });
-        this.nowPlaying = song;
-        console.log(`[MusicPlayer] Playing song: ${info.title}`);
+        ////////////////////////////////////////////////////////////////////////////////////////
       }else{
         console.log(`[MusicPlayer] Added song to queue: ${info.title}`);
         musicQueue.push(song);
-        response.addField('Added to queue',`${song.title} - ${song.artist}`);
       }
+      var text = "```\n";
       if(musicQueue.length > 0){
         for(let i = 0; i < musicQueue.length; i++){
-          response.addField(`${i+1}`,`${musicQueue[i].title} - ${musicQueue[i].artist}`);
+          text += `${i+1} : ${musicQueue[i].title} - ${musicQueue[i].artist}\n`;
         }
+      }else{
+        text += "Empty";
       }
+      text += "```";
       response.setTitle(`Now Playing`);
-      response.setDescription(`${this.nowPlaying.title} - ${this.nowPlaying.artist}`);
+      response.setDescription(`\`\`\`${this.nowPlaying.title} - ${this.nowPlaying.artist}\`\`\``);
+      response.addField('Queue', text);
       response.setThumbnail(this.nowPlaying.thumbnail);
       response.setColor(GREEN);
       if(callback) callback(response);

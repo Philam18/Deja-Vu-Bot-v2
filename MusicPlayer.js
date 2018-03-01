@@ -173,7 +173,6 @@ class MusicPlayer{
         this.guildMusicQueue.set(this.textChannel.guild.id,[]);
         musicQueue = this.guildMusicQueue.get(this.textChannel.guild.id);
       }
-      console.log(musicQueue.length);
       //Create object of song with information about title, artist, thumbnail
       var song = {
         title:info.title,
@@ -181,26 +180,6 @@ class MusicPlayer{
         thumbnail:info.thumbnail_url,
         url: url
       }
-
-      /**
-      Checking duplicates is commented out because it might be desireable to have it
-      in some cases; if unwanted, just uncomment the check.
-
-      //Check if the song is already in the playlist
-      for(let i = 0; i < this.musicQueue.length;i++){
-        var item = this.musicQueue[i];
-        //We cant use URL to check here because of stringQueries in URLs
-        //(eg. time seek, playlists, etc, inside the URL)
-        //So instead we simply check title and artist
-        if(item.title == song.title && item.artist == song.artist){
-          console.log("[MusicPlayer] Cannot add duplicate song");
-          response.setColor(RED);
-          response.setTitle("This song is already in the playlist.");
-          if(callback) callback(response);
-          return;
-        }
-      }
-      **/
 
       if(this.connection && !this.connection.speaking){
         var dispatcher = this.connection.playStream(ytdl(url, YOUTUBE_OPTIONS),STREAM_OPTIONS);
